@@ -92,7 +92,7 @@ export class JoomlaConverter {
 
   private static discoverContentElements(doc: Document): Element[] {
     const contentSelectors = [
-      'main', 'section', 'article', 'div[class*="section"]', 'div[class*="content"]',
+      'name', 'main', 'section', 'article', 'div[class*="section"]', 'div[class*="content"]',
       'div[class*="container"]', 'div[class*="wrapper"]', 'div[class*="row"]',
       'div[id*="section"]', 'div[id*="content"]', '.hero', '.banner', '.feature',
       '.testimonial', '.gallery', '.portfolio', '.about', '.service', '.product',
