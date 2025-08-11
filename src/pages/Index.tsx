@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 
 const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
-  const jsonString = JSON.stringify(data);
+  const jsonString = JSON.stringify(data, null, 2);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(jsonString);
@@ -22,7 +22,7 @@ const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'joomla-conversion.json';
+    a.download = `${data.name || 'yootheme-layout'}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -30,13 +30,31 @@ const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
   return (
     <div className="mt-6">
       <h2 className="text-lg font-semibold mb-2">Converted Joomla Format</h2>
-      <Textarea
-        readOnly
-        value={jsonString}
-        rows={20}
-        className="font-mono text-sm"
-      />
-      <div className="mt-2 space-x-2">
+      <div className="space-y-4">
+        {data?.children?.map((section: any, i: number) => (
+          <div key={i} className="border rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{section.name}</span>
+              <Badge variant="outline">Section</Badge>
+            </div>
+            <div className="mt-2 ml-4 space-y-2">
+              {section.children?.map((row: any, j: number) => (
+                <div key={j} className="pl-4 border-l">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>Row {j + 1}</span>
+                    {row.props?.layout && (
+                      <Badge variant="secondary">
+                        Layout: {row.props.layout}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 space-x-2">
         <Button onClick={handleCopy}>Copy to Clipboard</Button>
         <Button onClick={handleDownload}>Download JSON</Button>
       </div>
