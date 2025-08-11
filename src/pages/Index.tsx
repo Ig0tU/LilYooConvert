@@ -7,7 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 
 const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
+<<<<<<< HEAD
   const jsonString = JSON.stringify(data, null, 2);
+=======
+  const jsonString = JSON.stringify(data);
+>>>>>>> ce47160 (Initial commit)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(jsonString);
@@ -22,7 +26,11 @@ const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
+<<<<<<< HEAD
     a.download = `${data.name || 'yootheme-layout'}.json`;
+=======
+    a.download = 'joomla-conversion.json';
+>>>>>>> ce47160 (Initial commit)
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -30,6 +38,7 @@ const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
   return (
     <div className="mt-6">
       <h2 className="text-lg font-semibold mb-2">Converted Joomla Format</h2>
+<<<<<<< HEAD
       <div className="space-y-4">
         {data?.children?.map((section: any, i: number) => (
           <div key={i} className="border rounded-lg p-4">
@@ -55,6 +64,15 @@ const ConversionResult: React.FC<{ data: any }> = ({ data }) => {
         ))}
       </div>
       <div className="mt-4 space-x-2">
+=======
+      <Textarea
+        readOnly
+        value={jsonString}
+        rows={20}
+        className="font-mono text-sm"
+      />
+      <div className="mt-2 space-x-2">
+>>>>>>> ce47160 (Initial commit)
         <Button onClick={handleCopy}>Copy to Clipboard</Button>
         <Button onClick={handleDownload}>Download JSON</Button>
       </div>
