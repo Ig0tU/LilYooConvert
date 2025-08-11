@@ -316,7 +316,7 @@ export const JoomlaConverter: React.FC = () => {
                     <Separator />
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Preview JSON Structure</Label>
+                      <Label className="text-sm font-medium">Final JSON (with export tail)</Label>
                       <Textarea
                         value={JSON.stringify(conversionResult.data, null, 2)}
                         readOnly
