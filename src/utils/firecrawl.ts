@@ -1,11 +1,6 @@
 import FirecrawlApp from '@mendable/firecrawl-js';
 
-interface ErrorResponse {
-  success: false;
-  error: string;
-}
-
-interface CrawlResponse {
+interface ScrapeResponse {
   success: true;
   data: {
     content: string;
@@ -17,37 +12,45 @@ interface CrawlResponse {
       language: string;
       sourceURL: string;
     };
-  }[];
+  };
 }
 
-type ApiResponse = CrawlResponse | ErrorResponse;
+interface ErrorResponse {
+  success: false;
+  error: string;
+}
+
+
+type ApiResponse = ScrapeResponse | ErrorResponse;
 
 export class FirecrawlService {
   private static API_KEY_STORAGE_KEY = 'firecrawl_api_key';
   private static firecrawlApp: FirecrawlApp | null = null;
 
+  private static initializeApp(apiKey: string) {
+    if (!this.firecrawlApp || this.firecrawlApp.apiKey !== apiKey) {
+        this.firecrawlApp = new FirecrawlApp({ apiKey });
+    }
+  }
+
   static saveApiKey(apiKey: string): void {
     localStorage.setItem(this.API_KEY_STORAGE_KEY, apiKey);
-    this.firecrawlApp = new FirecrawlApp({ apiKey });
+    this.initializeApp(apiKey);
   }
 
   static getApiKey(): string | null {
     return localStorage.getItem(this.API_KEY_STORAGE_KEY);
   }
 
-  static async testApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
+  static async testApiKey(apiKey: string): Promise<boolean> {
     try {
-      this.firecrawlApp = new FirecrawlApp({ apiKey });
-      const testResponse = await this.firecrawlApp.crawlUrl('https://example.com', {
-        limit: 1
-      });
-      if (!testResponse.success) {
-        return { success: false, error: (testResponse as any).error || 'Invalid API key' };
-      }
-      return { success: true };
+      this.initializeApp(apiKey);
+      // Use scrapeUrl instead of crawlUrl for a lighter test
+      const testResponse = await this.firecrawlApp.scrapeUrl('https://firecrawl.dev/docs');
+      return testResponse.success;
     } catch (error) {
       console.error('Error testing API key:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error during API key validation' };
+      return false;
     }
   }
 
@@ -57,19 +60,15 @@ export class FirecrawlService {
       return { success: false, error: 'API key not found' };
     }
 
-    try {
-      if (!this.firecrawlApp) {
-        this.firecrawlApp = new FirecrawlApp({ apiKey });
-      }
+    this.initializeApp(apiKey);
 
-      const response = await this.firecrawlApp.crawlUrl(url, {
-        limit: 1,
-        scrapeOptions: {
-          formats: ['markdown', 'html'],
-          waitFor: 5000,
-          onlyMainContent: false
-        }
-      }) as ApiResponse;
+    try {
+      // Using scrapeUrl as requested
+      const response: ApiResponse = await this.firecrawlApp.scrapeUrl(url, {
+        formats: ["markdown", "html"], // Ensure both formats are requested
+        onlyMainContent: true,
+        maxAge: 14400000
+      });
 
       if (!response.success) {
         return { 
@@ -80,7 +79,7 @@ export class FirecrawlService {
 
       return { 
         success: true,
-        data: (response as CrawlResponse).data[0] 
+        data: (response as ScrapeResponse).data
       };
     } catch (error) {
       console.error('Error during scraping:', error);
