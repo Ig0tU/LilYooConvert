@@ -198,6 +198,8 @@ function doYourExistingConversion(scrapedData: AnyRec): AnyRec {
 }
 
 
+import { ollamaService } from './ollama';
+
 // Example: wire into your existing converter
 // (adjust names to match your actual util)
 export const JoomlaConverter = {
@@ -207,12 +209,54 @@ export const JoomlaConverter = {
 
     // 2) Append the export meta tail
     const finalWithTail = appendExportMetaTail(base, {
-      pageTitle: scraped?.meta?.title,
-      pageUrl: scraped?.meta?.url,
+      pageTitle: scraped?.metadata?.title,
+      pageUrl: scraped?.metadata?.sourceURL,
       // If you can detect YOOessentials version in your pipeline, pass it here.
       yooessentialsVersion: base?.yootheme?.yooessentialsVersion,
     });
 
     return finalWithTail;
   },
+
+  async convertWebsiteToJoomlaWithAI(scraped: AnyRec, prompt: string, model: string) {
+    const scrapedContent = JSON.stringify({
+       markdown: scraped.markdown,
+       metadata: scraped.metadata
+    });
+
+    const fullPrompt = `${prompt}\n\nHere is the scraped website data:\n${scrapedContent}\n\nPlease respond ONLY with valid JSON representing the YOOtheme Builder config. Do not wrap it in markdown code blocks like \`\`\`json. Just output the raw JSON string starting with { and ending with }.`;
+
+    let generatedJsonString = await ollamaService.generateCompletion(fullPrompt, model);
+
+    // Attempt to clean up markdown code blocks if the LLM still included them
+    generatedJsonString = generatedJsonString.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+
+    let builderConfig;
+    try {
+        builderConfig = JSON.parse(generatedJsonString);
+    } catch (e) {
+        console.error("Failed to parse AI response as JSON", e);
+        throw new Error("AI returned invalid JSON: " + (e as Error).message);
+    }
+
+    const base = {
+      joomla_version: '5.1',
+      assets: {
+        images: [],
+      },
+      yootheme: {
+        version: '4.4.12',
+        template: 'yootheme',
+        builder_config: builderConfig.builder_config ? builderConfig.builder_config : builderConfig,
+      },
+    };
+
+    const finalWithTail = appendExportMetaTail(base, {
+      pageTitle: scraped?.metadata?.title,
+      pageUrl: scraped?.metadata?.sourceURL,
+      yooessentialsVersion: base?.yootheme?.yooessentialsVersion,
+    });
+
+    return finalWithTail;
+  }
 };

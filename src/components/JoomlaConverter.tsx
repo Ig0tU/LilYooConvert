@@ -8,9 +8,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Globe, Key, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Download, Globe, Key, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { FirecrawlService } from '@/utils/firecrawl';
 import { JoomlaConverter as JoomlaConverterUtil } from '@/utils/joomlaConverter';
+import { ollamaService } from '@/utils/ollama';
 
 interface ConversionResult {
   success: boolean;
@@ -27,6 +28,17 @@ export const JoomlaConverter: React.FC = () => {
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
   const [activeTab, setActiveTab] = useState('setup');
 
+  const [ollamaHost, setOllamaHost] = useState(localStorage.getItem('ollama_host') || 'http://localhost:11434');
+  const [ollamaApiKey, setOllamaApiKey] = useState(localStorage.getItem('ollama_api_key') || '');
+  const [isTestingOllama, setIsTestingOllama] = useState(false);
+  const [ollamaValid, setOllamaValid] = useState<boolean | null>(null);
+
+  const [useAI, setUseAI] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('Create a modern YOOtheme Pro layout based on this website data. Use logical sections, rows, and columns. Extract the main title as an h1 headline, and other headings accordingly. Organize text content into text elements. Make it responsive and clean.');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
   const handleApiKeyTest = async () => {
     if (!apiKey.trim()) return;
     
@@ -40,6 +52,60 @@ export const JoomlaConverter: React.FC = () => {
     
     setIsTestingKey(false);
   };
+
+  const handleOllamaTest = async () => {
+    setIsTestingOllama(true);
+    setOllamaValid(null);
+    try {
+      localStorage.setItem('ollama_host', ollamaHost);
+      localStorage.setItem('ollama_api_key', ollamaApiKey);
+
+      // Simple test using fetch
+      const headers: Record<string, string> = {};
+      if (ollamaApiKey) {
+        headers['Authorization'] = `Bearer ${ollamaApiKey}`;
+      }
+
+      const response = await fetch(`${ollamaHost}/api/tags`, {
+        method: 'GET',
+        headers
+      });
+
+      if (response.ok) {
+        setOllamaValid(true);
+        loadOllamaModels();
+      } else {
+        setOllamaValid(false);
+      }
+    } catch (e) {
+      setOllamaValid(false);
+    } finally {
+      setIsTestingOllama(false);
+    }
+  };
+
+  const loadOllamaModels = async () => {
+    setIsLoadingModels(true);
+    try {
+      const models = await ollamaService.getModels();
+      setAvailableModels(models);
+      if (models.length > 0 && !selectedModel) {
+        setSelectedModel(models[0]);
+      }
+    } catch (e) {
+      console.error("Failed to load models", e);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // Load models on mount if we have a host configured
+  React.useEffect(() => {
+    if (ollamaHost) {
+      loadOllamaModels();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConversion = async () => {
     if (!url.trim() || !apiKey.trim()) return;
@@ -60,7 +126,17 @@ export const JoomlaConverter: React.FC = () => {
       }
 
       // Convert to YOOtheme format
-      const yoothemeData = JoomlaConverterUtil.convertWebsiteToJoomla(scrapeResult.data);
+      let yoothemeData;
+
+      if (useAI && selectedModel) {
+         yoothemeData = await JoomlaConverterUtil.convertWebsiteToJoomlaWithAI(
+             scrapeResult.data,
+             aiPrompt,
+             selectedModel
+         );
+      } else {
+         yoothemeData = JoomlaConverterUtil.convertWebsiteToJoomla(scrapeResult.data);
+      }
       
       setConversionResult({
         success: true,
@@ -136,66 +212,126 @@ export const JoomlaConverter: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="apiKey">Firecrawl API Key</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      placeholder="fc-..."
-                      value={apiKey}
-                      onChange={(e) => {
-                        setApiKey(e.target.value);
-                        setKeyValid(null);
-                      }}
-                      className="flex-1"
-                    />
-                    <Button 
-                      onClick={handleApiKeyTest}
-                      disabled={!apiKey.trim() || isTestingKey}
-                      variant="outline"
-                    >
-                      {isTestingKey ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        'Test'
-                      )}
-                    </Button>
+                <div className="space-y-4 mb-6 pb-6 border-b">
+                  <h3 className="font-medium text-lg">Firecrawl Setup</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="apiKey">Firecrawl API Key</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="apiKey"
+                        type="password"
+                        placeholder="fc-..."
+                        value={apiKey}
+                        onChange={(e) => {
+                          setApiKey(e.target.value);
+                          setKeyValid(null);
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleApiKeyTest}
+                        disabled={!apiKey.trim() || isTestingKey}
+                        variant="outline"
+                      >
+                        {isTestingKey ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Test'
+                        )}
+                      </Button>
+                    </div>
+                    {keyValid === true && (
+                      <div className="flex items-center gap-2 text-success">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm">API key is valid</span>
+                      </div>
+                    )}
+                    {keyValid === false && (
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm">Invalid API key</span>
+                      </div>
+                    )}
                   </div>
-                  {keyValid === true && (
-                    <div className="flex items-center gap-2 text-success">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="text-sm">API key is valid</span>
-                    </div>
-                  )}
-                  {keyValid === false && (
-                    <div className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm">Invalid API key</span>
-                    </div>
-                  )}
+
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Get your free API key from{' '}
+                      <a
+                        href="https://firecrawl.dev"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        firecrawl.dev
+                      </a>
+                      . Free tier includes 500 credits per month.
+                    </AlertDescription>
+                  </Alert>
                 </div>
 
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Get your free API key from{' '}
-                    <a 
-                      href="https://firecrawl.dev" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      firecrawl.dev
-                    </a>
-                    . Free tier includes 500 credits per month.
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg">Ollama Cloud/Local Setup</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="ollamaHost">Ollama Host URL</Label>
+                    <Input
+                      id="ollamaHost"
+                      type="url"
+                      placeholder="http://localhost:11434"
+                      value={ollamaHost}
+                      onChange={(e) => {
+                        setOllamaHost(e.target.value);
+                        setOllamaValid(null);
+                      }}
+                    />
+                  </div>
 
-                {keyValid === true && (
+                  <div className="space-y-2">
+                    <Label htmlFor="ollamaApiKey">Ollama API Key (Optional)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="ollamaApiKey"
+                        type="password"
+                        placeholder="sk-..."
+                        value={ollamaApiKey}
+                        onChange={(e) => {
+                          setOllamaApiKey(e.target.value);
+                          setOllamaValid(null);
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleOllamaTest}
+                        disabled={!ollamaHost.trim() || isTestingOllama}
+                        variant="outline"
+                      >
+                        {isTestingOllama ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Test'
+                        )}
+                      </Button>
+                    </div>
+                    {ollamaValid === true && (
+                      <div className="flex items-center gap-2 text-success">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm">Ollama connection successful</span>
+                      </div>
+                    )}
+                    {ollamaValid === false && (
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm">Could not connect to Ollama</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {(keyValid === true) && (
                   <Button 
                     onClick={() => setActiveTab('convert')}
-                    className="w-full"
+                    className="w-full mt-4"
                   >
                     Continue to Conversion
                   </Button>
@@ -228,9 +364,62 @@ export const JoomlaConverter: React.FC = () => {
                   />
                 </div>
 
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useAI"
+                      checked={useAI}
+                      onChange={(e) => setUseAI(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="useAI" className="font-medium">Use AI to generate YOOtheme structure (via Ollama)</Label>
+                  </div>
+
+                  {useAI && (
+                    <div className="space-y-4 p-4 border rounded-md bg-muted/50">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="model">Ollama Model</Label>
+                            <Button variant="ghost" size="sm" onClick={loadOllamaModels} disabled={isLoadingModels}>
+                                <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingModels ? 'animate-spin' : ''}`} /> Refresh
+                            </Button>
+                        </div>
+                        <select
+                          id="model"
+                          value={selectedModel}
+                          onChange={(e) => setSelectedModel(e.target.value)}
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="" disabled>Select a model...</option>
+                          {availableModels.map(model => (
+                            <option key={model} value={model}>{model}</option>
+                          ))}
+                        </select>
+                        {availableModels.length === 0 && !isLoadingModels && (
+                            <p className="text-xs text-destructive">No models found. Please check your Setup tab settings.</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="aiPrompt">System Prompt</Label>
+                        <Textarea
+                          id="aiPrompt"
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          rows={4}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <Button 
                   onClick={handleConversion}
-                  disabled={!url.trim() || !apiKey.trim() || isLoading}
+                  disabled={!url.trim() || !apiKey.trim() || isLoading || (useAI && !selectedModel)}
                   className="w-full"
                   size="lg"
                 >
