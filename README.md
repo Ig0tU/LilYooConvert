@@ -1,39 +1,10 @@
-# Welcome to To-Yoo
+# To-Yoo - Website to YOOtheme Converter
 
-To-Yoo is an advanced AI agent specifically built for YOOtheme Joomla-managed projects.
-It operates true to official documentation in all ways, logic, operations, functions, decisions, and reasoning for YOOtheme v3 through v5.
-It intelligently utilizes YOOtheme's nuanced in-section subsets of possibilities, expertly building with a YOOtheme-brained architecture.
+Advanced AI-powered converter for Joomla YOOtheme. Supports multiple AI providers: OpenRouter, Grok, Gemini, Ollama, LM Studio, Hugging Face.
 
-## How can I edit this code?
+## Features
+- Multi-provider AI with auto model loading
+- Clean modern UI
+- Reliable YOOtheme JSON output
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Clone and `npm run dev` to start.
