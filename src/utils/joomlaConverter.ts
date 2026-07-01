@@ -132,7 +132,12 @@ export function appendExportMetaTail(
 // ---- Real implementation ----
 function doYourExistingConversion(scrapedData: AnyRec): AnyRec {
     // Basic conversion logic
-    const sections = (scrapedData.markdown || '')
+
+    // Some firecrawl versions return the markdown at the top level,
+    // while others nest it inside a data object. Let's be resilient.
+    const markdown = scrapedData?.markdown || scrapedData?.data?.markdown || '';
+
+    const sections = markdown
       .split('\n## ')
       .filter(Boolean)
       .map((sectionContent:string, index:number) => {
@@ -207,10 +212,13 @@ export const JoomlaConverter = {
     // 1) Existing conversion (placeholder — your real logic lives here)
     const base = doYourExistingConversion(scraped); // <- replace with your function
 
+    // Extract metadata resiliently
+    const metadata = scraped?.metadata || scraped?.data?.metadata || {};
+
     // 2) Append the export meta tail
     const finalWithTail = appendExportMetaTail(base, {
-      pageTitle: scraped?.metadata?.title,
-      pageUrl: scraped?.metadata?.sourceURL,
+      pageTitle: metadata?.title,
+      pageUrl: metadata?.sourceURL,
       // If you can detect YOOessentials version in your pipeline, pass it here.
       yooessentialsVersion: base?.yootheme?.yooessentialsVersion,
     });
@@ -219,9 +227,12 @@ export const JoomlaConverter = {
   },
 
   async convertWebsiteToJoomlaWithAI(scraped: AnyRec, prompt: string, model: string) {
+    const markdown = scraped?.markdown || scraped?.data?.markdown || '';
+    const metadata = scraped?.metadata || scraped?.data?.metadata || {};
+
     const scrapedContent = JSON.stringify({
-       markdown: scraped.markdown,
-       metadata: scraped.metadata
+       markdown: markdown,
+       metadata: metadata
     });
 
     const fullPrompt = `${prompt}\n\nHere is the scraped website data:\n${scrapedContent}\n\nPlease respond ONLY with valid JSON representing the YOOtheme Builder config. Do not wrap it in markdown code blocks like \`\`\`json. Just output the raw JSON string starting with { and ending with }.`;
@@ -252,8 +263,8 @@ export const JoomlaConverter = {
     };
 
     const finalWithTail = appendExportMetaTail(base, {
-      pageTitle: scraped?.metadata?.title,
-      pageUrl: scraped?.metadata?.sourceURL,
+      pageTitle: metadata?.title,
+      pageUrl: metadata?.sourceURL,
       yooessentialsVersion: base?.yootheme?.yooessentialsVersion,
     });
 
