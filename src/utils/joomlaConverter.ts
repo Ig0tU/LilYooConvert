@@ -70,7 +70,7 @@ function toLibraryName(fromUrl?: string, fallbacks?: { title?: string }): string
   if (!fromUrl) return 'Converted Layout';
   try {
     const u = new URL(fromUrl);
-    const path = u.pathname.replace(///$/, '');
+    const path = u.pathname.replace(/\/$/, '');
     return (path ? `${u.hostname}${path}` : u.hostname).slice(0, 80);
   } catch {
     return fromUrl.slice(0, 80);
