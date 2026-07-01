@@ -67,7 +67,7 @@ export class FirecrawlService {
       const response: ApiResponse = await this.firecrawlApp.scrapeUrl(url, {
         formats: ["markdown", "html"], // Ensure both formats are requested
         onlyMainContent: true,
-        maxAge: 14400000
+        timeout: 30000 // Adding timeout for network issues
       });
 
       if (!response.success) {
